@@ -66,33 +66,68 @@ public class OrderService {
     }
 
     public ResponseEntity<Object> save(Order order) {
-        HashMap<String, Object> data = new HashMap<>();
-
+    HashMap<String, Object> data = new HashMap<>();
+    
+    try {
+        // Generar referencia y guardar la orden
         order.setReference(this.generarStringAleatorio());
         Order o = this.orderRepository.save(order);
-
-        // Creamos el estadod el pedido en Pago Aceptado
-        Optional<State> state = this.stateRepository.findByName("Pago Aceptado");
-        System.out.println(state.get());
-        if(state.isPresent()){
-            StateOrder stateOrder = new StateOrder();
-            stateOrder.setState(state.get());
-            stateOrder.setOrder(o);
-            this.stateOrderRepository.save(stateOrder);
+        System.out.println("Orden guardada con ID: " + o.getId());
+        
+        // Asociar estado "Pago Aceptado"
+        try {
+            Optional<State> state = this.stateRepository.findByName("Pago Aceptado");
+            System.out.println("Estado encontrado: " + (state.isPresent() ? "Sí" : "No"));
+            
+            if(state.isPresent()){
+                StateOrder stateOrder = new StateOrder();
+                stateOrder.setState(state.get());
+                stateOrder.setOrder(o);
+                this.stateOrderRepository.save(stateOrder);
+                System.out.println("Estado de orden guardado correctamente");
+            } else {
+                System.out.println("No se encontró el estado 'Pago Aceptado'");
+            }
+        } catch(Exception e) {
+            System.out.println("Error al crear estado de orden: " + e.getMessage());
+            // Continuar con el proceso a pesar del error
         }
-
-        Optional<User> user = this.userRepository.findById(order.getUser().getId());
-        if(user.isPresent()){
-            emailService.sendEmail(user.get().getEmail(), "Pedido confirmado: " + order.getReference(), "Total: " + order.getTotal_price() + " €");
+        
+        // Enviar email
+        try {
+            Optional<User> user = this.userRepository.findById(order.getUser().getId());
+            System.out.println("Usuario encontrado: " + (user.isPresent() ? "Sí" : "No"));
+            
+            if(user.isPresent()){
+                emailService.sendEmail(user.get().getEmail(), "Pedido confirmado: " + order.getReference(), "Total: " + order.getTotal_price() + " €");
+                System.out.println("Email enviado correctamente a: " + user.get().getEmail());
+            }
+        } catch(Exception e) {
+            System.out.println("Error al enviar email: " + e.getMessage());
+            e.printStackTrace();
+            // Continuar con el proceso a pesar del error en el email
         }
-
+        
+        // Respuesta exitosa
         data.put("data", order);
         data.put("message", "Successfully saved");
         return new ResponseEntity<>(
                 data,
                 HttpStatus.CREATED
         );
+        
+    } catch(Exception e) {
+        System.out.println("Error general en save(): " + e.getMessage());
+        e.printStackTrace();
+        
+        data.put("error", true);
+        data.put("message", "Error al guardar la orden: " + e.getMessage());
+        return new ResponseEntity<>(
+                data,
+                HttpStatus.INTERNAL_SERVER_ERROR
+        );
     }
+}
 
     public ResponseEntity<Object> update(Long id, Order order) {
         HashMap<String, Object> data = new HashMap<>();

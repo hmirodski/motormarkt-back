@@ -19,7 +19,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping(path = "api/v1/images_product")
-@CrossOrigin(origins = "http://localhost:4200", methods = { RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE })
+@CrossOrigin(origins = "http://localhost:4200", allowedHeaders = "*", methods = { RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE, RequestMethod.OPTIONS })
 public class ImageProductController {
 
     @Autowired

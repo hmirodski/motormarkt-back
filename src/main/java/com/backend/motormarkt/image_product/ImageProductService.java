@@ -58,61 +58,64 @@ public class ImageProductService {
 
     public ResponseEntity<Object> save(Long product_id, MultipartFile image) throws IOException{
         HashMap<String, Object> data = new HashMap<>();
-
-        String filename = UUID.randomUUID().toString();
-        byte[] bytes = image.getBytes();
-        String fileOriginalName = image.getOriginalFilename();
-
-        long fileSize = image.getSize();
-        long maxFileSize = 1 * 1024 * 1024;
-
-        if(fileSize > maxFileSize){
-            data.put("error", true);
-            data.put("message", "Image size is too large");
-
-            return new ResponseEntity<>(
-                    data,
-                    HttpStatus.CONFLICT
-            );
-        }
-
-        if(
-            !fileOriginalName.endsWith(".jpg") &&
-            !fileOriginalName.endsWith(".jpeg") &&
-            !fileOriginalName.endsWith(".png")
-        ){
-            data.put("error", true);
-            data.put("message", "Only JPG, JPEG, PNG files are allowed!");
-
-            return new ResponseEntity<>(
-                    data,
-                    HttpStatus.CONFLICT
-            );
-        }
-
-        String fileExtension = fileOriginalName.substring(fileOriginalName.lastIndexOf("."));
-        String newFileName = filename + fileExtension;
-
-        File folder = new File("src/main/resources/static");
-        if(!folder.exists()){
-            folder.mkdirs();
-        }
-
-        Path path = Paths.get("src/main/resources/static/", newFileName);
-        Files.write(path, bytes);
         
-        ImageProduct imageProduct = new ImageProduct();
-        
-        imageProduct.setProduct(productRepository.findById(product_id).get());
-        imageProduct.setName(newFileName);
-        this.imageProductRepository.save(imageProduct);
+        try {
+            // Verificar que el producto existe
+            Optional<Product> productOptional = this.productRepository.findById(product_id);
+            if (!productOptional.isPresent()) {
+                data.put("error", true);
+                data.put("message", "The product does not exist");
+                return new ResponseEntity<>(data, HttpStatus.CONFLICT);
+            }
 
-        data.put("data", imageProduct);
-        data.put("message", "Successfully saved");
-        return new ResponseEntity<>(
-                data,
-                HttpStatus.CREATED
-        );
+            String filename = UUID.randomUUID().toString();
+            byte[] bytes = image.getBytes();
+            String fileOriginalName = image.getOriginalFilename();
+
+            long fileSize = image.getSize();
+            long maxFileSize = 1 * 1024 * 1024;
+
+            if(fileSize > maxFileSize){
+                data.put("error", true);
+                data.put("message", "Image size is too large");
+                return new ResponseEntity<>(data, HttpStatus.CONFLICT);
+            }
+
+            if(
+                !fileOriginalName.endsWith(".jpg") &&
+                !fileOriginalName.endsWith(".jpeg") &&
+                !fileOriginalName.endsWith(".png")
+            ){
+                data.put("error", true);
+                data.put("message", "Only JPG, JPEG, PNG files are allowed!");
+                return new ResponseEntity<>(data, HttpStatus.CONFLICT);
+            }
+
+            String fileExtension = fileOriginalName.substring(fileOriginalName.lastIndexOf("."));
+            String newFileName = filename + fileExtension;
+
+            File folder = new File("src/main/resources/static");
+            if(!folder.exists()){
+                folder.mkdirs();
+            }
+
+            Path path = Paths.get("src/main/resources/static/", newFileName);
+            Files.write(path, bytes);
+            
+            ImageProduct imageProduct = new ImageProduct();
+            
+            imageProduct.setProduct(productOptional.get());
+            imageProduct.setName(newFileName);
+            this.imageProductRepository.save(imageProduct);
+
+            data.put("data", imageProduct);
+            data.put("message", "Successfully saved");
+            return new ResponseEntity<>(data, HttpStatus.CREATED);
+        } catch (Exception e) {
+            data.put("error", true);
+            data.put("message", "Error saving image: " + e.getMessage());
+            return new ResponseEntity<>(data, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
 
     public ResponseEntity<Object> delete(Long id) throws IOException{
